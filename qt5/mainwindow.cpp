@@ -1,5 +1,5 @@
-#include "MainWindow.h"
-#include "ui_MainWindow.h"
+#include "mainwindow.h"
+#include "mainwindow.ui"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), stopwatch(new Stopwatch(this)), lapCount(0) {
