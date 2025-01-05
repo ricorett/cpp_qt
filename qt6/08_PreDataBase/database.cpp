@@ -66,26 +66,26 @@ void DataBase::RequestToDB(const QString &request) {
     }
 
 
-    auto *tableWidget = new QTableWidget();
-    tableWidget->setColumnCount(query.record().count());
-    tableWidget->setRowCount(0);
+    auto *tableView = new QTableWidget();
+    tableView->setColumnCount(query.record().count());
+    tableView->setRowCount(0);
 
 
     for (int col = 0; col < query.record().count(); ++col) {
-        tableWidget->setHorizontalHeaderItem(col, new QTableWidgetItem(query.record().fieldName(col)));
+        tableView->setHorizontalHeaderItem(col, new QTableWidgetItem(query.record().fieldName(col)));
     }
 
     int row = 0;
     while (query.next()) {
-        tableWidget->insertRow(row);
+        tableView->insertRow(row);
         for (int col = 0; col < query.record().count(); ++col) {
-            tableWidget->setItem(row, col, new QTableWidgetItem(query.value(col).toString()));
+            tableView->setItem(row, col, new QTableWidgetItem(query.value(col).toString()));
         }
         ++row;
     }
 
     // Отправка данных через сигнал
-    emit sig_SendDataFromDB(tableWidget, 0 /*typeRequest*/);
+    emit sig_SendDataFromDB(tableView, 0 /*typeRequest*/);
     emit sig_SendQueryResult(true);
 }
 

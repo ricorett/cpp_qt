@@ -1,50 +1,29 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include <QSqlQuery>
+#include <QDebug>
+#include <QSqlError>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+        : QMainWindow(parent)
+        , ui(new Ui::MainWindow)
+        , tableModel(nullptr)
+        , queryModel(nullptr)
 {
-    //Исходное состояние виджетов
     ui->setupUi(this);
-    ui->lb_statusConnect->setStyleSheet("color:red");
-    ui->pb_request->setEnabled(false);
 
-    /*
-     * Выделим память под необходимые объекты. Все они наследники
-     * QObject, поэтому воспользуемся иерархией.
-    */
+    // Настройка ComboBox для фильтрации
+    ui->comboBoxFilter->addItem("Все");      // Индекс 0
+    ui->comboBoxFilter->addItem("Комедии"); // Индекс 1
+    ui->comboBoxFilter->addItem("Ужасы");   // Индекс 2
 
-    dataDb = new DbData(this);
-    dataBase = new DataBase(this);
-    msg = new QMessageBox(this);
+    // Настройка TableView
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->horizontalHeader()->setStretchLastSection(true);
 
-    //Установим размер вектора данных для подключения к БД
-    dataForConnect.resize(NUM_DATA_FOR_CONNECT_TO_DB);
-
-    /*
-     * Добавим БД используя стандартный драйвер PSQL и зададим имя.
-    */
-    dataBase->AddDataBase(POSTGRE_DRIVER, DB_NAME);
-
-    /*
-     * Устанавливаем данные для подключениея к БД.
-     * Поскольку метод небольшой используем лямбда-функцию.
-     */
-    connect(dataDb, &DbData::sig_sendData, this, [&](QVector<QString> receivData){
-        dataForConnect = receivData;
-    });
-
-    /*
-     * Соединяем сигнал, который передает ответ от БД с методом, который отображает ответ в ПИ
-     */
-     connect(dataBase, &DataBase::sig_SendDataFromDB, this, &MainWindow::ScreenDataFromDB);
-
-    /*
-     *  Сигнал для подключения к БД
-     */
-    connect(dataBase, &DataBase::sig_SendStatusConnection, this, &MainWindow::ReceiveStatusConnectionToDB);
-
+    // Загрузка всех фильмов по умолчанию
+    loadAllMovies();
 }
 
 MainWindow::~MainWindow()
@@ -52,106 +31,72 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-/*!
- * @brief Слот отображает форму для ввода данных подключения к БД
- */
-void MainWindow::on_act_addData_triggered()
+// Загрузка всех фильмов
+void MainWindow::loadAllMovies()
 {
-    //Отобразим диалоговое окно. Какой метод нужно использовать?
-    dataDb->show();
+    if (tableModel) {
+        delete tableModel; // Удаляем предыдущую модель
+    }
+
+    tableModel = new QSqlTableModel(this);
+    tableModel->setTable("film"); // Указываем таблицу "film"
+    tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
+
+    // Настраиваем заголовки
+    tableModel->setHeaderData(1, Qt::Horizontal, "Название фильма");
+    tableModel->setHeaderData(2, Qt::Horizontal, "Описание фильма");
+
+    tableModel->select(); // Загружаем данные
+    ui->tableView->setModel(tableModel); // Устанавливаем модель в TableView
 }
 
-/*!
- * @brief Слот выполняет подключение к БД. И отображает ошибки.
- */
-
-void MainWindow::on_act_connect_triggered()
+// Загрузка фильмов по категории
+void MainWindow::loadMoviesByCategory(const QString &category)
 {
-    /*
-     * Обработчик кнопки у нас должен подключаться и отключаться от БД.
-     * Можно привязаться к надписи лейбла статуса. Если он равен
-     * "Отключено" мы осуществляем подключение, если "Подключено" то
-     * отключаемся
-    */
-
-    if(ui->lb_statusConnect->text() == "Отключено"){
-
-       ui->lb_statusConnect->setText("Подключение");
-       ui->lb_statusConnect->setStyleSheet("color : black");
-
-
-       auto conn = [&]{dataBase->ConnectToDataBase(dataForConnect);};
-       QtConcurrent::run(conn);
-
-    }
-    else{
-        dataBase->DisconnectFromDataBase(DB_NAME);
-        ui->lb_statusConnect->setText("Отключено");
-        ui->act_connect->setText("Подключиться");
-        ui->lb_statusConnect->setStyleSheet("color:red");
-        ui->pb_request->setEnabled(false);
+    if (queryModel) {
+        delete queryModel; // Удаляем предыдущую модель
     }
 
+    queryModel = new QSqlQueryModel(this);
+
+    QString queryText = R"(
+        SELECT f.title, f.description
+        FROM film f
+        JOIN film_category fc ON f.film_id = fc.film_id
+        JOIN category c ON c.category_id = fc.category_id
+        WHERE c.name = :category
+    )";
+
+    QSqlQuery query;
+    query.prepare(queryText);
+    query.bindValue(":category", category);
+
+    if (!query.exec()) {
+        qDebug() << "Failed to execute query:" << query.lastError().text();
+        return;
+    }
+
+    queryModel->setQuery(query);
+    queryModel->setHeaderData(0, Qt::Horizontal, "Название фильма");
+    queryModel->setHeaderData(1, Qt::Horizontal, "Описание фильма");
+
+    ui->tableView->setModel(queryModel); // Устанавливаем модель в TableView
 }
 
-/*!
- * \brief Обработчик кнопки "Получить"
- */
-void MainWindow::on_pb_request_clicked()
+// Обработка изменения фильтра
+void MainWindow::on_comboBoxFilter_currentIndexChanged(int index)
 {
-
-    ///Тут должен быть код ДЗ
-
-}
-
-/*!
- * \brief Слот отображает значение в QTableWidget
- * \param widget
- * \param typeRequest
- */
-void MainWindow::ScreenDataFromDB(const QTableWidget *widget, int typeRequest) {
-    // Очистка текущего QTableWidget
-    ui->tableWidget->clear();
-    ui->tableWidget->setRowCount(widget->rowCount());
-    ui->tableWidget->setColumnCount(widget->columnCount());
-
-    // Копирование данных
-    for (int row = 0; row < widget->rowCount(); ++row) {
-        for (int col = 0; col < widget->columnCount(); ++col) {
-            QTableWidgetItem *item = widget->item(row, col);
-            if (item) {
-                ui->tableWidget->setItem(row, col, new QTableWidgetItem(*item));
-            }
-        }
-    }
-
-    // Установка заголовков
-    for (int col = 0; col < widget->columnCount(); ++col) {
-        ui->tableWidget->setHorizontalHeaderItem(col, new QTableWidgetItem(*widget->horizontalHeaderItem(col)));
+    if (index == 0) { // Все фильмы
+        loadAllMovies();
+    } else if (index == 1) { // Комедии
+        loadMoviesByCategory("Comedy");
+    } else if (index == 2) { // Ужасы
+        loadMoviesByCategory("Horror");
     }
 }
-/*!
- * \brief Метод изменяет состояние формы в зависимости от статуса подключения к БД
- * \param status
- */
-void MainWindow::ReceiveStatusConnectionToDB(bool status)
+
+// Очистка таблицы
+void MainWindow::on_buttonClear_clicked()
 {
-    if(status){
-        ui->act_connect->setText("Отключиться");
-        ui->lb_statusConnect->setText("Подключено к БД");
-        ui->lb_statusConnect->setStyleSheet("color:green");
-        ui->pb_request->setEnabled(true);
-    }
-    else{
-        dataBase->DisconnectFromDataBase(DB_NAME);
-        msg->setIcon(QMessageBox::Critical);
-        msg->setText(dataBase->GetLastError().text());
-        ui->lb_statusConnect->setText("Отключено");
-        ui->lb_statusConnect->setStyleSheet("color:red");
-        msg->exec();
-    }
-
+    ui->tableView->setModel(nullptr); // Очищаем таблицу
 }
-
-
-

@@ -2,12 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QMessageBox>
-#include <QtConcurrent>
-#include "database.h"
-#include "dbdata.h"
-
-
+#include <QSqlTableModel>
+#include <QSqlQueryModel>
+#include <QSqlDatabase>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -15,40 +12,23 @@ QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
 {
-    Q_OBJECT
+Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-
-public slots:
-    void ScreenDataFromDB(const QTableWidget *widget, int typeRequest);
-    void ReceiveStatusConnectionToDB(bool status);
-
-
 private slots:
-    void on_act_addData_triggered();
-    void on_act_connect_triggered();
-    void on_pb_request_clicked();
-
-
-signals:
-    void sig_RequestToDb(QString request);
+    void on_comboBoxFilter_currentIndexChanged(int index); // Обработка изменения фильтра
+    void on_buttonClear_clicked(); // Очистка таблицы
 
 private:
-
-    QVector<QString> dataForConnect; //Данные для подключения к БД.
-
     Ui::MainWindow *ui;
-    DbData *dataDb;
-    DataBase* dataBase;
-    QMessageBox* msg;
+    QSqlTableModel *tableModel; // Модель для отображения всех фильмов
+    QSqlQueryModel *queryModel; // Модель для отображения фильмов по категориям
 
-    QString request = "SELECT title, release_year, c.name  FROM film f "
-                      "JOIN film_category fc on f.film_id = fc.film_id "
-                      "JOIN category c on c.category_id  = fc.category_id";
-
-
+    void loadAllMovies();           // Загрузка всех фильмов
+    void loadMoviesByCategory(const QString &category); // Загрузка фильмов по категории
 };
+
 #endif // MAINWINDOW_H
