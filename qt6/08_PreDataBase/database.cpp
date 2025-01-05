@@ -55,8 +55,7 @@ void DataBase::DisconnectFromDataBase(const QString &nameDb) {
  * \param request - SQL запрос
  * \return
  */
-#include <QTableWidget>
-#include <QTableWidgetItem>
+
 
 void DataBase::RequestToDB(const QString &request) {
     QSqlQuery query(dataBase);
@@ -66,17 +65,16 @@ void DataBase::RequestToDB(const QString &request) {
         return;
     }
 
-    // Создание таблицы для отправки через сигнал
+
     auto *tableWidget = new QTableWidget();
     tableWidget->setColumnCount(query.record().count());
     tableWidget->setRowCount(0);
 
-    // Установка заголовков таблицы
+
     for (int col = 0; col < query.record().count(); ++col) {
         tableWidget->setHorizontalHeaderItem(col, new QTableWidgetItem(query.record().fieldName(col)));
     }
 
-    // Заполнение данных
     int row = 0;
     while (query.next()) {
         tableWidget->insertRow(row);

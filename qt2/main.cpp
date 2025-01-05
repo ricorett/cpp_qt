@@ -1,3 +1,15 @@
+//#include <QApplication>
+//#include <QPushButton>
+//
+//int main(int argc, char *argv[]) {
+//    QApplication app(argc, argv);
+//
+//    QPushButton button("Нажми меня");
+//    QObject::connect(&button, &QPushButton::clicked, &app, &QApplication::quit);
+//
+//    button.show();
+//    return app.exec();
+//}
 #include <QApplication>
 #include <QPushButton>
 #include <QtSql>
@@ -5,13 +17,6 @@
 
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
-
-    QSqlDatabase db;
-    QNetworkAccessManager *manager;
-
-    QPushButton button("Hello world!", nullptr);
-    button.resize(200, 100);
-    button.show();
-
+    
     return QApplication::exec();
 }
