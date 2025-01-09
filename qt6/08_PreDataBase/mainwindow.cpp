@@ -3,58 +3,82 @@
 #include <QSqlQuery>
 #include <QDebug>
 #include <QSqlError>
+#include "database.h"
 
 MainWindow::MainWindow(QWidget *parent)
-        : QMainWindow(parent)
-        , ui(new Ui::MainWindow)
-        , tableModel(nullptr)
-        , queryModel(nullptr)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+    , dbDataDialog(new DbData(this)) // Инициализация DbData
+    , tableModel(nullptr)
+    , queryModel(nullptr)
 {
     ui->setupUi(this);
 
-    // Настройка ComboBox для фильтрации
+    connect(dbDataDialog, &DbData::sig_sendData, this, &MainWindow::onReceiveDbData);
+    dbDataDialog->exec();
+
     ui->comboBoxFilter->addItem("Все");      // Индекс 0
     ui->comboBoxFilter->addItem("Комедии"); // Индекс 1
     ui->comboBoxFilter->addItem("Ужасы");   // Индекс 2
 
-    // Настройка TableView
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->horizontalHeader()->setStretchLastSection(true);
 
-    // Загрузка всех фильмов по умолчанию
+
     loadAllMovies();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete dbDataDialog;
 }
 
-// Загрузка всех фильмов
+
+void MainWindow::onReceiveDbData(const QVector<QString> &data)
+{
+    if (data.isEmpty()) {
+        qDebug() << "Данные для подключения не получены.";
+        return;
+    }
+
+    DataBase *dataBase = new DataBase(this);
+    dataBase->AddDataBase("QPSQL", "DefaultConnection");
+    dataBase->ConnectToDataBase(data);
+
+    connect(dataBase, &DataBase::sig_SendStatusConnection, this, [&](bool status) {
+        if (status) {
+            qDebug() << "Успешное подключение к базе данных.";
+        } else {
+            qDebug() << "Ошибка подключения к базе данных.";
+        }
+    });
+}
+
 void MainWindow::loadAllMovies()
 {
     if (tableModel) {
-        delete tableModel; // Удаляем предыдущую модель
+        delete tableModel;
     }
 
     tableModel = new QSqlTableModel(this);
     tableModel->setTable("film"); // Указываем таблицу "film"
     tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
 
-    // Настраиваем заголовки
+
     tableModel->setHeaderData(1, Qt::Horizontal, "Название фильма");
     tableModel->setHeaderData(2, Qt::Horizontal, "Описание фильма");
 
-    tableModel->select(); // Загружаем данные
-    ui->tableView->setModel(tableModel); // Устанавливаем модель в TableView
+    tableModel->select();
+    ui->tableView->setModel(tableModel);
 }
 
-// Загрузка фильмов по категории
+
 void MainWindow::loadMoviesByCategory(const QString &category)
 {
     if (queryModel) {
-        delete queryModel; // Удаляем предыдущую модель
+        delete queryModel;
     }
 
     queryModel = new QSqlQueryModel(this);
@@ -80,22 +104,20 @@ void MainWindow::loadMoviesByCategory(const QString &category)
     queryModel->setHeaderData(0, Qt::Horizontal, "Название фильма");
     queryModel->setHeaderData(1, Qt::Horizontal, "Описание фильма");
 
-    ui->tableView->setModel(queryModel); // Устанавливаем модель в TableView
+    ui->tableView->setModel(queryModel);
 }
 
-// Обработка изменения фильтра
 void MainWindow::on_comboBoxFilter_currentIndexChanged(int index)
 {
-    if (index == 0) { // Все фильмы
+    if (index == 0) {
         loadAllMovies();
-    } else if (index == 1) { // Комедии
+    } else if (index == 1) {
         loadMoviesByCategory("Comedy");
-    } else if (index == 2) { // Ужасы
+    } else if (index == 2) {
         loadMoviesByCategory("Horror");
     }
 }
 
-// Очистка таблицы
 void MainWindow::on_buttonClear_clicked()
 {
     ui->tableView->setModel(nullptr); // Очищаем таблицу

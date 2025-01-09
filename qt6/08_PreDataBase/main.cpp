@@ -8,8 +8,6 @@ int main(int argc, char *argv[]) {
     MainWindow w;
     DbData dbData;
 
-    dbData.exec();
-
     w.show();
     return app.exec();
 }

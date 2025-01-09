@@ -2,6 +2,7 @@
 #define DBDATA_H
 
 #include <QDialog>
+#include "database.h"
 
 namespace Ui {
 class DbData;

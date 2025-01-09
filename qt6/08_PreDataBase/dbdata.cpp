@@ -1,5 +1,5 @@
 #include "dbdata.h"
-#include "database.h"
+
 #include "ui_dbdata.h"
 
 DbData::DbData(QWidget *parent) :
@@ -8,9 +8,6 @@ DbData::DbData(QWidget *parent) :
 {
     ui->setupUi(this);
 
-
-    //Ресайзим вектор значений, по количеству полей необходимых для
-    //подключения к БД
     data.resize(NUM_DATA_FOR_CONNECT_TO_DB);
 
 }
