@@ -5,7 +5,9 @@
 #include <QSqlTableModel>
 #include <QSqlQueryModel>
 #include <QSqlDatabase>
+#include <QVector>
 #include "dbdata.h"
+#include "database.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -22,6 +24,7 @@ public:
 private slots:
     void on_comboBoxFilter_currentIndexChanged(int index); // Обработка изменения фильтра
     void on_buttonClear_clicked(); // Очистка таблицы
+public slots:
     void onReceiveDbData(const QVector<QString> &data); // Для получения данных от DbData
 
 private:

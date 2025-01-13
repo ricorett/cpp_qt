@@ -3,12 +3,12 @@
 #include <QSqlQuery>
 #include <QDebug>
 #include <QSqlError>
-#include "database.h"
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , dbDataDialog(new DbData(this)) // Инициализация DbData
+    , dbDataDialog(new DbData(this))
     , tableModel(nullptr)
     , queryModel(nullptr)
 {

@@ -21,8 +21,6 @@ DbData::~DbData()
  */
 void DbData::on_buttonBox_accepted()
 {
-
-    //Добавляем данные в контейнер и передаем в главное окно
     data[hostName] = ui->le_host->text();
     data[dbName] = ui->le_dbName->text();
     data[login] = ui->le_login->text();
