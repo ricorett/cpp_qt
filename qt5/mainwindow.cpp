@@ -31,10 +31,16 @@ void MainWindow::onStartStopButtonClicked() {
     }
 }
 
+
 void MainWindow::onResetButtonClicked() {
+    bool wasRunning = stopwatch->isRunning();
     stopwatch->reset();
     ui->lapBrowser->clear();
     lapCount = 0;
+
+    if (wasRunning) {
+        stopwatch->start();
+    }
 }
 
 void MainWindow::onLapButtonClicked() {
