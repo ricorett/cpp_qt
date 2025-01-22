@@ -30,11 +30,12 @@ public slots:
 private:
     Ui::MainWindow *ui;
     DbData *dbDataDialog;
-    QSqlTableModel *tableModel; // Модель для отображения всех фильмов
-    QSqlQueryModel *queryModel; // Модель для отображения фильмов по категориям
+    QSqlTableModel *tableModel;
+    QSqlQueryModel *queryModel;
+    QSqlDatabase dataBase;
 
-    void loadAllMovies();           // Загрузка всех фильмов
-    void loadMoviesByCategory(const QString &category); // Загрузка фильмов по категории
+    void loadAllMovies();
+    void loadMoviesByCategory(const QString &category);
 };
 
 #endif // MAINWINDOW_H

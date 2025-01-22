@@ -43,17 +43,27 @@ void MainWindow::onReceiveDbData(const QVector<QString> &data)
         return;
     }
 
-    DataBase *dataBase = new DataBase(this);
-    dataBase->AddDataBase("QPSQL", "DefaultConnection");
-    dataBase->ConnectToDataBase(data);
+    if (QSqlDatabase::contains("DefaultConnection")) {
+        dataBase = QSqlDatabase::database("DefaultConnection");
+    } else {
+        dataBase = QSqlDatabase::addDatabase("QPSQL", "DefaultConnection");
+    }
 
-    connect(dataBase, &DataBase::sig_SendStatusConnection, this, [&](bool status) {
-        if (status) {
-            qDebug() << "Успешное подключение к базе данных.";
-        } else {
-            qDebug() << "Ошибка подключения к базе данных.";
-        }
-    });
+    dataBase.setHostName(data[hostName]);
+    dataBase.setDatabaseName(data[dbName]);
+    dataBase.setUserName(data[login]);
+    dataBase.setPassword(data[pass]);
+    dataBase.setPort(data[port].toInt());
+
+    if (dataBase.open()) {
+        qDebug() << "Успешное подключение к базе данных.";
+    } else {
+        qDebug() << "Ошибка подключения к базе данных: " << dataBase.lastError().text();
+        return;
+    }
+
+    // Загружаем данные после успешного подключения
+    loadAllMovies();
 }
 
 void MainWindow::loadAllMovies()
@@ -62,10 +72,10 @@ void MainWindow::loadAllMovies()
         delete tableModel;
     }
 
-    tableModel = new QSqlTableModel(this);
-    tableModel->setTable("film"); // Указываем таблицу "film"
+    // Передаем dataBase вторым параметром
+    tableModel = new QSqlTableModel(this, dataBase);
+    tableModel->setTable("film");
     tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-
 
     tableModel->setHeaderData(1, Qt::Horizontal, "Название фильма");
     tableModel->setHeaderData(2, Qt::Horizontal, "Описание фильма");
@@ -73,7 +83,6 @@ void MainWindow::loadAllMovies()
     tableModel->select();
     ui->tableView->setModel(tableModel);
 }
-
 
 void MainWindow::loadMoviesByCategory(const QString &category)
 {
@@ -91,7 +100,7 @@ void MainWindow::loadMoviesByCategory(const QString &category)
         WHERE c.name = :category
     )";
 
-    QSqlQuery query;
+    QSqlQuery query(dataBase);  // Указываем подключение к БД
     query.prepare(queryText);
     query.bindValue(":category", category);
 
