@@ -22,10 +22,13 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_comboBoxFilter_currentIndexChanged(int index); // Обработка изменения фильтра
-    void on_buttonClear_clicked(); // Очистка таблицы
-public slots:
-    void onReceiveDbData(const QVector<QString> &data); // Для получения данных от DbData
+    void on_comboBoxFilter_currentIndexChanged(int index);
+    void on_buttonClear_clicked();
+    void on_pb_request_clicked();
+
+    public slots:
+    void onReceiveDbData(const QVector<QString> &data);
+    void onStatusConnection(bool status);
 
 private:
     Ui::MainWindow *ui;
@@ -36,6 +39,8 @@ private:
 
     void loadAllMovies();
     void loadMoviesByCategory(const QString &category);
+
+
 };
 
 #endif // MAINWINDOW_H

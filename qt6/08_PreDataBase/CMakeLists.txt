@@ -76,14 +76,11 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Пути для поиска Qt6 и PostgreSQL
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/homebrew/opt/qt6/lib/cmake")
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/opt/homebrew/opt/qt-postgresql/lib/cmake")
 
-# Поиск Qt6 и необходимых компонентов
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Concurrent)
 
-# Источники проекта
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -98,19 +95,16 @@ set(PROJECT_SOURCES
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES})
 
-# Добавляем пути к заголовочным файлам PostgreSQL
 target_include_directories(${PROJECT_NAME} PRIVATE
         /opt/homebrew/opt/qt-postgresql/include
         /opt/homebrew/opt/postgresql@15/include
 )
 
-# Добавляем пути к библиотекам PostgreSQL
 target_link_directories(${PROJECT_NAME} PRIVATE
         /opt/homebrew/opt/qt-postgresql/lib
         /opt/homebrew/opt/postgresql@15/lib
 )
 
-# Линковка библиотек Qt6 и PostgreSQL
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Widgets
         Qt6::Sql

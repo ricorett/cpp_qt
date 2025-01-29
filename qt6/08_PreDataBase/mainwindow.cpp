@@ -4,29 +4,28 @@
 #include <QDebug>
 #include <QSqlError>
 
-
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , dbDataDialog(new DbData(this))
-    , tableModel(nullptr)
-    , queryModel(nullptr)
+        : QMainWindow(parent)
+        , ui(new Ui::MainWindow)
+        , dbDataDialog(new DbData(this))
+        , tableModel(nullptr)
+        , queryModel(nullptr)
 {
     ui->setupUi(this);
 
     connect(dbDataDialog, &DbData::sig_sendData, this, &MainWindow::onReceiveDbData);
-    dbDataDialog->exec();
+    dbDataDialog->exec(); // Открываем окно ввода данных подключения
 
-    ui->comboBoxFilter->addItem("Все");      // Индекс 0
-    ui->comboBoxFilter->addItem("Комедии"); // Индекс 1
-    ui->comboBoxFilter->addItem("Ужасы");   // Индекс 2
+    // Проверяем, есть ли уже элементы перед добавлением
+    if (ui->comboBoxFilter->count() == 0) {
+        ui->comboBoxFilter->addItem("Все");
+        ui->comboBoxFilter->addItem("Комедии");
+        ui->comboBoxFilter->addItem("Ужасы");
+    }
 
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->horizontalHeader()->setStretchLastSection(true);
-
-
-    loadAllMovies();
 }
 
 MainWindow::~MainWindow()
@@ -35,7 +34,9 @@ MainWindow::~MainWindow()
     delete dbDataDialog;
 }
 
-
+/*!
+ * \brief Обработчик получения данных для подключения
+ */
 void MainWindow::onReceiveDbData(const QVector<QString> &data)
 {
     if (data.isEmpty()) {
@@ -55,57 +56,49 @@ void MainWindow::onReceiveDbData(const QVector<QString> &data)
     dataBase.setPassword(data[pass]);
     dataBase.setPort(data[port].toInt());
 
-    if (dataBase.open()) {
-        qDebug() << "Успешное подключение к базе данных.";
-    } else {
-        qDebug() << "Ошибка подключения к базе данных: " << dataBase.lastError().text();
-        return;
-    }
+    bool status = dataBase.open();
 
-    // Загружаем данные после успешного подключения
-    loadAllMovies();
+    qDebug() << (status ? "Подключение успешно." : "Ошибка подключения: " + dataBase.lastError().text());
+
+    emit onStatusConnection(status);
+
+    if (status) {
+        on_comboBoxFilter_currentIndexChanged(ui->comboBoxFilter->currentIndex());
+    }
 }
 
+/*!
+ * \brief Слот обновления статуса подключения в UI
+ */
+void MainWindow::onStatusConnection(bool status)
+{
+    if (status) {
+        qDebug() << "Соединение с БД установлено.";
+        ui->lb_statusConnect->setText("Подключено");
+        ui->lb_statusConnect->setStyleSheet("color: green;");
+    } else {
+        qDebug() << "Соединение с БД не удалось.";
+        ui->lb_statusConnect->setText("Ошибка подключения");
+        ui->lb_statusConnect->setStyleSheet("color: red;");
+    }
+}
+
+/*!
+ * \brief Загрузка всех фильмов
+ */
 void MainWindow::loadAllMovies()
 {
-    if (tableModel) {
-        delete tableModel;
+    if (!queryModel) {
+        queryModel = new QSqlQueryModel(this);
     }
-
-    // Передаем dataBase вторым параметром
-    tableModel = new QSqlTableModel(this, dataBase);
-    tableModel->setTable("film");
-    tableModel->setEditStrategy(QSqlTableModel::OnManualSubmit);
-
-    tableModel->setHeaderData(1, Qt::Horizontal, "Название фильма");
-    tableModel->setHeaderData(2, Qt::Horizontal, "Описание фильма");
-
-    tableModel->select();
-    ui->tableView->setModel(tableModel);
-}
-
-void MainWindow::loadMoviesByCategory(const QString &category)
-{
-    if (queryModel) {
-        delete queryModel;
-    }
-
-    queryModel = new QSqlQueryModel(this);
 
     QString queryText = R"(
-        SELECT f.title, f.description
-        FROM film f
-        JOIN film_category fc ON f.film_id = fc.film_id
-        JOIN category c ON c.category_id = fc.category_id
-        WHERE c.name = :category
+        SELECT title, description FROM film
     )";
 
-    QSqlQuery query(dataBase);  // Указываем подключение к БД
-    query.prepare(queryText);
-    query.bindValue(":category", category);
-
-    if (!query.exec()) {
-        qDebug() << "Failed to execute query:" << query.lastError().text();
+    QSqlQuery query(dataBase);
+    if (!query.exec(queryText)) {
+        qDebug() << "Ошибка выполнения запроса: " << query.lastError().text();
         return;
     }
 
@@ -116,6 +109,42 @@ void MainWindow::loadMoviesByCategory(const QString &category)
     ui->tableView->setModel(queryModel);
 }
 
+/*!
+ * \brief Загрузка фильмов по категории
+ */
+void MainWindow::loadMoviesByCategory(const QString &category)
+{
+    if (!queryModel) {
+        queryModel = new QSqlQueryModel(this);
+    }
+
+    QString queryText = R"(
+        SELECT f.title, f.description
+        FROM film f
+        JOIN film_category fc ON f.film_id = fc.film_id
+        JOIN category c ON c.category_id = fc.category_id
+        WHERE c.name = :category
+    )";
+
+    QSqlQuery query(dataBase);
+    query.prepare(queryText);
+    query.bindValue(":category", category);
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса: " << query.lastError().text();
+        return;
+    }
+
+    queryModel->setQuery(query);
+    queryModel->setHeaderData(0, Qt::Horizontal, "Название фильма");
+    queryModel->setHeaderData(1, Qt::Horizontal, "Описание фильма");
+
+    ui->tableView->setModel(queryModel);
+}
+
+/*!
+ * \brief Обработчик смены жанра
+ */
 void MainWindow::on_comboBoxFilter_currentIndexChanged(int index)
 {
     if (index == 0) {
@@ -127,7 +156,19 @@ void MainWindow::on_comboBoxFilter_currentIndexChanged(int index)
     }
 }
 
+/*!
+ * \brief Очистка таблицы
+ */
 void MainWindow::on_buttonClear_clicked()
 {
-    ui->tableView->setModel(nullptr); // Очищаем таблицу
+    ui->tableView->setModel(nullptr);
+}
+
+void MainWindow::on_pb_request_clicked()
+{
+    int index = ui->comboBoxFilter->currentIndex();
+
+    on_comboBoxFilter_currentIndexChanged(index);
+
+    qDebug() << "Запрос обновлен для категории: " << ui->comboBoxFilter->currentText();
 }
